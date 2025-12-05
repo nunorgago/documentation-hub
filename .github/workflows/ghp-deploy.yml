@@ -12,6 +12,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2️⃣ Configure Git
+      - name: Configure Git
+        run: |
+          git config user.name "Nuno Gago"
+          git config user.email "nuno.gago@fanduel.com"
+
+
+      # 3️⃣ Fetch and pull docs from project-a
+      - name: Update docs from project-a
+        env:
+          PAT: ${{ secrets.GH_DOCS_TOKEN }}
+        run: |
+          git remote add project-a https://x-access-token:${PAT}@github.com/nunorgago/project-a.git || true
+          git fetch project-a
+          git subtree pull --prefix=docs/project-a project-a docs-only --squash
+
+      # 4️⃣ Fetch and pull docs from project-b
+      - name: Update docs from project-b
+        env:
+          PAT: ${{ secrets.GH_DOCS_TOKEN }}
+        run: |
+          git remote add project-b https://x-access-token:${PAT}@github.com/nunorgago/project-b.git || true
+          git fetch project-b
+          git subtree pull --prefix=docs/project-b project-b docs-only --squash
+
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
