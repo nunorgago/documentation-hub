@@ -18,25 +18,24 @@ jobs:
           git config user.name "Nuno Gago"
           git config user.email "nuno.gago@fanduel.com"
 
-
-      # 3️⃣ Fetch and pull docs from project-a
-      - name: Update docs from project-a
+        # 3️⃣ Pull or add subtrees
+      - name: Update docs subtrees
         env:
           PAT: ${{ secrets.GH_DOCS_TOKEN }}
+          PROJECTS: |
+            project-a:docs/project-a:${{ secrets.GH_DOCS_TOKEN }}:docs-only
+            project-b:docs/project-b:${{ secrets.GH_DOCS_TOKEN }}:docs-only
         run: |
-          git remote add project-a https://x-access-token:${PAT}@github.com/nunorgago/project-a.git || true
-          git fetch project-a
-          git subtree pull --prefix=docs/project-a project-a docs-only --squash
+          for entry in $PROJECTS; do
+            IFS=":" read -r REPO_NAME PREFIX PAT BRANCH <<< "$entry"
+            echo "Processing $REPO_NAME -> $PREFIX (branch $BRANCH)"
+            git remote add $REPO_NAME https://x-access-token:${PAT}@github.com/nunorgago/$REPO_NAME.git || true
+            git fetch $REPO_NAME
 
-      # 4️⃣ Fetch and pull docs from project-b
-      - name: Update docs from project-b
-        env:
-          PAT: ${{ secrets.GH_DOCS_TOKEN }}
-        run: |
-          git remote add project-b https://x-access-token:${PAT}@github.com/nunorgago/project-b.git || true
-          git fetch project-b
-          git subtree pull --prefix=docs/project-b project-b docs-only --squash
-
+            # Try pull; if fails, do add
+            git subtree pull --prefix=$PREFIX $REPO_NAME $BRANCH --squash || \
+            git subtree add --prefix=$PREFIX $REPO_NAME $BRANCH --squash
+          done
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
