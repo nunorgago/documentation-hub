@@ -24,19 +24,39 @@ jobs:
         env:
           PAT: ${{ secrets.GH_DOCS_TOKEN }}
         run: |
-          git remote add project-a https://x-access-token:${PAT}@github.com/nunorgago/project-a.git || true
-          git fetch project-a
-          git subtree pull --prefix=docs/project-a project-a docs-only --squash
+          REMOTE_NAME="project-a"
+          PREFIX="docs/project-a"
+          BRANCH="docs-only"
+          git remote add $REMOTE_NAME https://x-access-token:${PAT}@github.com/nunorgago/project-a.git || true
+          git fetch $REMOTE_NAME
+
+          # check if subtree exists
+          if git log -1 --oneline $PREFIX >/dev/null 2>&1; then
+            echo "Subtree exists, pulling updates..."
+            git subtree pull --prefix=$PREFIX $REMOTE_NAME $BRANCH --squash
+          else
+            echo "Subtree missing, adding..."
+            git subtree add --prefix=$PREFIX $REMOTE_NAME $BRANCH --squash
+          fi
 
       # 4️⃣ Fetch and pull docs from project-b
       - name: Update docs from project-b
         env:
           PAT: ${{ secrets.GH_DOCS_TOKEN }}
         run: |
-          git remote add project-b https://x-access-token:${PAT}@github.com/nunorgago/project-b.git || true
-          git fetch project-b
-          git subtree pull --prefix=docs/project-b project-b docs-only --squash
+          REMOTE_NAME="project-b"
+          PREFIX="docs/project-b"
+          BRANCH="docs-only"
+          git remote add $REMOTE_NAME https://x-access-token:${PAT}@github.com/nunorgago/project-b.git || true
+          git fetch $REMOTE_NAME
 
+          if git log -1 --oneline $PREFIX >/dev/null 2>&1; then
+            echo "Subtree exists, pulling updates..."
+            git subtree pull --prefix=$PREFIX $REMOTE_NAME $BRANCH --squash
+          else
+            echo "Subtree missing, adding..."
+            git subtree add --prefix=$PREFIX $REMOTE_NAME $BRANCH --squash
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
