@@ -8,3 +8,4 @@ hide_table_of_contents: true
 # Project B
 
 This is project B documentation section.
+It is not included in the sidebar of hub.
