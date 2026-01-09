@@ -4,50 +4,61 @@ on:
   push:
     branches:
       - main
+      - improve-ci-pipeline
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo:
+          - nunorgago/project-a
+          - nunorgago/project-b
     steps:
+      # 1️⃣ Checkout current repo
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Configure Git
-      - name: Configure Git
+      # 2️⃣ Checkout Project A
+      - name: Checkout project-a
+        uses: actions/checkout@v4
+        with:
+          repository: nunorgago/project-a
+          token: ${{ secrets.GH_DOCS_TOKEN }}
+          path: _external/project-a
+
+      # 3️⃣ Checkout Project B
+      - name: Checkout project-b
+        uses: actions/checkout@v4
+        with:
+          repository: nunorgago/project-b
+          token: ${{ secrets.GH_DOCS_TOKEN }}
+          path: _external/project-b
+
+      # 4️⃣ Copy docs into this repo
+      - name: Copy external docs
         run: |
-          git config user.name "Nuno Gago"
-          git config user.email "nuno.gago@fanduel.com"
+          rm -rf docs/project-a docs/project-b
+          mkdir -p docs
 
-        # 3️⃣ Pull or add subtrees
-      - name: Update docs subtrees
-        env:
-          PAT: ${{ secrets.GH_DOCS_TOKEN }}
-          PROJECTS: |
-            project-a:docs/project-a:${{ secrets.GH_DOCS_TOKEN }}:docs-only
-            project-b:docs/project-b:${{ secrets.GH_DOCS_TOKEN }}:docs-only
-        run: |
-          for entry in $PROJECTS; do
-            IFS=":" read -r REPO_NAME PREFIX PAT BRANCH <<< "$entry"
-            echo "Processing $REPO_NAME -> $PREFIX (branch $BRANCH)"
-            git remote add $REPO_NAME https://x-access-token:${PAT}@github.com/nunorgago/$REPO_NAME.git || true
-            git fetch $REPO_NAME
+          cp -R _external/project-a/docs docs/project-a
+          cp -R _external/project-b/docs docs/project-b
 
-            # Try pull; if fails, do add
-            git subtree pull --prefix=$PREFIX $REPO_NAME $BRANCH --squash || \
-            git subtree add --prefix=$PREFIX $REPO_NAME $BRANCH --squash
-          done
-
+      # 5️⃣ Setup Node
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24.4.0'
 
+      # 6️⃣ Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # 7️⃣ Build docs
       - name: Build Documentation
         run: npm run build
 
+      # 8️⃣ Deploy
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
