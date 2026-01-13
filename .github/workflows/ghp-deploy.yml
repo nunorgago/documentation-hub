@@ -9,56 +9,45 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        repo:
-          - nunorgago/project-a
-          - nunorgago/project-b
     steps:
       # 1️⃣ Checkout current repo
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Checkout Project A
-      - name: Checkout project-a
-        uses: actions/checkout@v4
-        with:
-          repository: nunorgago/project-a
-          token: ${{ secrets.GH_DOCS_TOKEN }}
-          path: _external/project-a
-
-      # 3️⃣ Checkout Project B
-      - name: Checkout project-b
-        uses: actions/checkout@v4
-        with:
-          repository: nunorgago/project-b
-          token: ${{ secrets.GH_DOCS_TOKEN }}
-          path: _external/project-b
-
-      # 4️⃣ Copy docs into this repo
-      - name: Copy external docs
+      # 2️⃣ Checkout external projects and copy docs
+      - name: Checkout external projects
         run: |
-          rm -rf docs/project-a docs/project-b
-          mkdir -p docs
+          mkdir -p _external docs
 
-          cp -R _external/project-a/docs docs/project-a
-          cp -R _external/project-b/docs docs/project-b
+          cat projects.json | jq -c '.[]' | while read project; do
+            name=$(echo "$project" | jq -r '.name')
+            repo=$(echo "$project" | jq -r '.repo')
 
-      # 5️⃣ Setup Node
+            echo "➡️ Processing $name ($repo)"
+
+            # Clone project
+            git clone https://x-access-token:${{ secrets.GH_DOCS_TOKEN }}@github.com/$repo.git _external/$name
+
+            # Copy docs into hub
+            rm -rf docs/$name
+            cp -R _external/$name/docs docs/$name
+          done
+
+      # 3️⃣ Setup Node
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24.4.0'
 
-      # 6️⃣ Install dependencies
+      # 4️⃣ Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      # 7️⃣ Build docs
+      # 5️⃣ Build docs
       - name: Build Documentation
         run: npm run build
 
-      # 8️⃣ Deploy
+      # 6️⃣ Deploy
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
